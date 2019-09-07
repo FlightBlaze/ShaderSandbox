@@ -1,0 +1,40 @@
+[Buildset]
+BuildItems=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x01\x00\x00\x00\x0b\x00\x00\x00\x00\x01\x00\x00\x00\x1a\x00S\x00h\x00a\x00d\x00e\x00r\x00S\x00a\x00n\x00d\x00b\x00o\x00x)
+
+[CMake]
+Build Directory Count=1
+Current Build Directory Index-Host System=0
+
+[CMake][CMake Build Directory 0]
+Build Directory Path=/home/blaze/projects/ShaderSandbox_build
+Build Type=Debug
+CMake Binary=/usr/bin/cmake
+CMake Executable=/usr/bin/cmake
+Environment Profile=
+Extra Arguments=
+Install Directory=
+Runtime=Host System
+
+[Launch]
+Launch Configurations=Launch Configuration 0
+
+[Launch][Launch Configuration 0]
+Configured Launch Modes=execute
+Configured Launchers=nativeAppLauncher
+Name=shadersandbox
+Type=Native Application
+
+[Launch][Launch Configuration 0][Data]
+Arguments=
+Dependencies=@Variant(\x00\x00\x00\t\x00\x00\x00\x00\x01\x00\x00\x00\x0b\x00\x00\x00\x00\x02\x00\x00\x00\x1a\x00S\x00h\x00a\x00d\x00e\x00r\x00S\x00a\x00n\x00d\x00b\x00o\x00x\x00\x00\x00\x1a\x00s\x00h\x00a\x00d\x00e\x00r\x00s\x00a\x00n\x00d\x00b\x00o\x00x)
+Dependency Action=Build
+EnvironmentGroup=
+Executable=file:///home/blaze/projects/ShaderSandbox
+External Terminal=konsole --noclose --workdir %workdir -e %exe
+Project Target=ShaderSandbox,shadersandbox
+Use External Terminal=false
+Working Directory=
+isExecutable=false
+
+[Project]
+VersionControlSupport=

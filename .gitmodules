@@ -1,0 +1,3 @@
+[submodule "third_party/libsoil"]
+	path = third_party/libsoil
+	url = https://github.com/kbranigan/Simple-OpenGL-Image-Library.git
