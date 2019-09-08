@@ -29,10 +29,10 @@ namespace sandbox {
 
 GLfloat vertices[] = {
      // Position          // Color            // UVs
-     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // Top right
-     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // Bottom right
-    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Bottom left
-    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // Top left
+     1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // Top right
+     1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // Bottom right
+    -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Bottom left
+    -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // Top left
 };
 
 const GLuint indices[] = {
@@ -49,7 +49,7 @@ unsigned Demo :: loadImage(const char* path) {
         &width,
         &height,
         &channels,
-        STBI_rgb
+        STBI_rgb_alpha
     );
     
     GLuint texture;
@@ -61,7 +61,7 @@ unsigned Demo :: loadImage(const char* path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
     
     glBindTexture(GL_TEXTURE_2D, 0);
     stbi_image_free(image);
@@ -89,7 +89,7 @@ int Demo :: run() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
-    m_window = glfwCreateWindow(1280, 720, "Demo", 0, 0);
+    m_window = glfwCreateWindow(920, 767, "Demo", 0, 0);
     
     glfwSetKeyCallback(m_window, key_callback);
     glfwMakeContextCurrent(m_window);
@@ -144,6 +144,7 @@ int Demo :: run() {
     // Make textures
     
     glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     GLuint texture0 = loadImage("../ShaderSandbox/resources/sample.png");
     GLuint texture1 = loadImage("../ShaderSandbox/resources/photo1.png");

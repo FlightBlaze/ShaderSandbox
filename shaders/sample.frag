@@ -10,18 +10,9 @@ uniform sampler2D ourTexture1;
 uniform float ratio;
 uniform float anim;
 
-const vec4 background = vec4(0.6, 0.6, 0.6, 1);
+const vec4 background = vec4(0.1, 0.1, 0.1, 1);
 
 void main() {
-
-    if((UV.x + UV.y / ratio) > anim + anim / ratio)
-        color = vec4(1, 0, 0, 1);
-    else
-        color = vec4(1, 1, 1, 1);
-
-    //////////////////////////////////////////////
-    return;
-    
     if((UV.x + UV.y) / 2 > 1 - anim) {
         color = background;
         return;
@@ -32,23 +23,25 @@ void main() {
         return;
     }
     
+    color = texture(ourTexture1, UV);
+    
     float mirrorX = (1 - anim * 2) - UV.x;
     float mirrorY = (1 - anim * 2) - UV.y;
     
-    if(mirrorY >= 0 || mirrorX >= 0) {
-        color = texture(ourTexture1, UV);
+    if(mirrorY >= 0 || mirrorX >= 0)
         return;
-    }
     
-    color = texture(ourTexture1, vec2(mirrorY, mirrorX));
+    vec4 backface = texture(ourTexture1, vec2(mirrorY, mirrorX));
+        
+    color.rgba = mix(color.rgba, backface.rgba, backface.a);
     
-    color += vec4(0.11, 0.11, 0.11, 0);
+    if(backface.a == 0)
+        return;
     
-    float light = (1 - anim - (UV.x + UV.y) / 2) / 2;
-    color += vec4(light, light, light, 0);
+    // add light
+    color.rgb += 0.11 * backface.a;
+    color.rgb += ((1 - anim - (UV.x + UV.y) / 2) / 2) * backface.a;
     
-    if((UV.x + UV.y) / 2 < 1 - anim && (UV.x + UV.y) / 2 > 1 - anim - 0.02) {
-        float add = (1 - abs((UV.x + UV.y) / 2 - (1 - anim)) / 0.02) / 4;
-        color += vec4(add, add, add, 1);
-    }
+    if((UV.x + UV.y) / 2 < 1 - anim && (UV.x + UV.y) / 2 > 1 - anim - 0.02)
+        color.rgb += ((1 - abs((UV.x + UV.y) / 2 - (1 - anim)) / 0.02) / 5.5) * backface.a;
 }
