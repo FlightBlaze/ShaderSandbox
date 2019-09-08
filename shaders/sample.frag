@@ -7,10 +7,16 @@ out vec4 color;
 
 uniform sampler2D ourTexture0;
 uniform sampler2D ourTexture1;
-uniform float ratio;
+uniform int height;
+uniform int width;
 uniform float anim;
 
 const vec4 background = vec4(0.1, 0.1, 0.1, 1);
+
+void darkenBorder(float thickness, float intensity) {
+    if((UV.x + (UV.y * height + thickness) / height ) / 2 > 1 - anim)
+        color.rgb = mix(color.rgb, background.rgb, intensity);
+}
 
 void main() {
     if((UV.x + UV.y) / 2 > 1 - anim) {
@@ -44,4 +50,10 @@ void main() {
     
     if((UV.x + UV.y) / 2 < 1 - anim && (UV.x + UV.y) / 2 > 1 - anim - 0.02)
         color.rgb += ((1 - abs((UV.x + UV.y) / 2 - (1 - anim)) / 0.02) / 5.5) * backface.a;
+        
+    // antialias border
+    darkenBorder(0.25, 0.75);
+    darkenBorder(0.5, 0.5);
+    darkenBorder(0.75, 0.333);
+    darkenBorder(1, 0.25);
 }

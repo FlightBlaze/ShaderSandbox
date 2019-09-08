@@ -152,7 +152,6 @@ int Demo :: run() {
     // Main cycle
     
     do {
-        float ratio;
         int width, height;
         
         glfwGetFramebufferSize(m_window, &width, &height);
@@ -171,10 +170,10 @@ int Demo :: run() {
         glBindTexture(GL_TEXTURE_2D, texture1);
         glUniform1i(glGetUniformLocation(sampleShader.program, "ourTexture1"), 1);
         
-        // Ratio
+        // Push width and height
         
-        ratio = width / (float) height;
-        glUniform1f(glGetUniformLocation(sampleShader.program, "ratio"), ratio);
+        glUniform1i(glGetUniformLocation(sampleShader.program, "height"), height);
+        glUniform1i(glGetUniformLocation(sampleShader.program, "width"), width);
         
         // Animate
         
