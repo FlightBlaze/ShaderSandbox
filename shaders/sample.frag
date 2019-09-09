@@ -1,12 +1,9 @@
 #version 330 core
 
-in vec3 ourColor;
 in vec2 UV;
-
 out vec4 color;
 
-uniform sampler2D ourTexture0;
-uniform sampler2D ourTexture1;
+uniform sampler2D texture0;
 uniform int height;
 uniform int width;
 uniform float anim;
@@ -24,12 +21,10 @@ void main() {
         return;
     }
     
-    if((UV.x + UV.y) / 2 <= 1 - anim * 2) {
-        color = texture(ourTexture1, UV);
-        return;
-    }
+    color = texture(texture0, UV);
     
-    color = texture(ourTexture1, UV);
+    if((UV.x + UV.y) / 2 <= 1 - anim * 2)
+        return;
     
     float mirrorX = (1 - anim * 2) - UV.x;
     float mirrorY = (1 - anim * 2) - UV.y;
@@ -37,7 +32,7 @@ void main() {
     if(mirrorY >= 0 || mirrorX >= 0)
         return;
     
-    vec4 backface = texture(ourTexture1, vec2(mirrorY, mirrorX));
+    vec4 backface = texture(texture0, vec2(mirrorY, mirrorX));
     
     color.rgba = mix(color.rgba, vec4(backface.rgb, 1), backface.a);
     
@@ -45,7 +40,7 @@ void main() {
         return;
     
     // add light
-    color.rgb += 0.11 * backface.a;
+    color.rgb += 0.09 * backface.a;
     color.rgb += ((1 - anim - (UV.x + UV.y) / 2) / 2) * backface.a;
     
     if((UV.x + UV.y) / 2 < 1 - anim && (UV.x + UV.y) / 2 > 1 - anim - 0.02)
