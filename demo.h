@@ -11,6 +11,7 @@ class Demo {
     GLFWwindow* m_window = 0;
     
     unsigned loadImage(const char*);
+    unsigned createTexture(int, int);
     
 public:
     
