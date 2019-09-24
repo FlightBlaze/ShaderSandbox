@@ -109,6 +109,20 @@ unsigned Demo :: createTexture(int width, int height) {
     return tex;
 }
 
+void Demo :: recreateFramebuffer(unsigned &framebuffer, unsigned &texture, int width, int height) {
+    if(framebuffer != 0)
+        glDeleteFramebuffers(1, &framebuffer);
+    glGenFramebuffers(1, &framebuffer);
+    
+    if(texture != 0)
+        glDeleteTextures(1, &texture);
+    texture = createTexture(width, height);
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);    
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 Demo :: Demo(int argc, char **argv):
     m_argc(), m_argv() {
     
@@ -150,18 +164,23 @@ int Demo :: run() {
     // Load shaders
     
     Shader normalShader(
-        "../ShaderSandbox/shaders/normal.vert",
-        "../ShaderSandbox/shaders/normal.frag"
+        "../ShaderSandbox/shaders/blending/normal.vert",
+        "../ShaderSandbox/shaders/blending/normal.frag"
     );
     
-    Shader backShader(
-        "../ShaderSandbox/shaders/bending/back.vert",
-        "../ShaderSandbox/shaders/bending/back.frag"
+    Shader adheredShader(
+        "../ShaderSandbox/shaders/peel/adhered.vert",
+        "../ShaderSandbox/shaders/peel/adhered.frag"
     );
     
-    Shader frontShader(
-        "../ShaderSandbox/shaders/bending/front.vert",
-        "../ShaderSandbox/shaders/bending/front.frag"
+    Shader unstuckShader(
+        "../ShaderSandbox/shaders/peel/unstuck.vert",
+        "../ShaderSandbox/shaders/peel/unstuck.frag"
+    );
+    
+    Shader suckShader(
+        "../ShaderSandbox/shaders/suck.vert",
+        "../ShaderSandbox/shaders/suck.frag"
     );
     
     // Create buffers and array
@@ -204,34 +223,18 @@ int Demo :: run() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     GLuint texture0 = loadImage("../ShaderSandbox/resources/photo1.png");
+    GLuint texBackground = loadImage("../ShaderSandbox/resources/background.png");
     
-    // Create framebuffers
+    // Framebuffers and textures
     
-    unsigned int fbBack;
-    glGenFramebuffers(1, &fbBack);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbBack);
-    
-    unsigned int texBack = createTexture(700, 500);
-    
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texBack, 0);
-    
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        return error("Framebuffer incomplete");
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    unsigned int fbAdhered = 0,
+                texAdhered = 0;
    
-    unsigned int fbFront;
-    glGenFramebuffers(1, &fbFront);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbFront);
+    unsigned int fbUnstuck = 0,
+                texUnstuck = 0;
     
-    unsigned int texFront = createTexture(700, 500);
-    
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texFront, 0);
-    
-    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        return error("Framebuffer incomplete");
-    
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    unsigned int fbMain = 0,
+                texMain = 0;
     
     // screen VAO
     
@@ -248,35 +251,50 @@ int Demo :: run() {
     
     // Main cycle
     
+    int rwidth = 0, rheight = 0;
+    
     do {
         int width, height;
         
         glfwGetFramebufferSize(m_window, &width, &height);
-        glViewport(0, 0, width, height);
-    
-        // Back bending shader
         
-        glBindFramebuffer(GL_FRAMEBUFFER, fbBack);
+        // Resize textures
+        
+        if(height != rheight || width != rwidth) {
+         
+            rheight = height;
+            rwidth = width;
+            
+            recreateFramebuffer(fbAdhered, texAdhered, width, height);
+            recreateFramebuffer(fbUnstuck, texUnstuck, width, height);
+            recreateFramebuffer(fbMain, texMain, width, height);
+        }
+        
+        glViewport(0, 0, width, height);
+        
+        // Adhered shader effect
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, fbAdhered);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0, 0, 0, 0);
         
-        backShader.use();
+        adheredShader.use();
         
         // Bind textures
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture0);
-        glUniform1i(glGetUniformLocation(backShader.program, "texture0"), 0);
+        glUniform1i(glGetUniformLocation(adheredShader.program, "texture0"), 0);
         
         // Push width and height
         
-        glUniform1i(glGetUniformLocation(backShader.program, "height"), height);
-        glUniform1i(glGetUniformLocation(backShader.program, "width"), width);
+        glUniform1i(glGetUniformLocation(adheredShader.program, "height"), height);
+        glUniform1i(glGetUniformLocation(adheredShader.program, "width"), width);
         
         // Animate
         
         GLfloat anim = (sin(glfwGetTime()) / 2) + 0.5;
-        glUniform1f(glGetUniformLocation(backShader.program, "anim"), anim);
+        glUniform1f(glGetUniformLocation(adheredShader.program, "anim"), anim);
         
         // Render
         
@@ -284,27 +302,74 @@ int Demo :: run() {
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
         
-        // Front bending shader
+        // Unstuck shader effect
         
-        glBindFramebuffer(GL_FRAMEBUFFER, fbFront);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbUnstuck);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0, 0, 0, 0);
         
-        frontShader.use();
+        unstuckShader.use();
         
-        glUniform1i(glGetUniformLocation(frontShader.program, "height"), height);
-        glUniform1i(glGetUniformLocation(frontShader.program, "width"), width);
-        glUniform1f(glGetUniformLocation(frontShader.program, "anim"), anim);
+        glUniform1i(glGetUniformLocation(unstuckShader.program, "height"), height);
+        glUniform1i(glGetUniformLocation(unstuckShader.program, "width"), width);
+        glUniform1f(glGetUniformLocation(unstuckShader.program, "anim"), anim);
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture0);
-        glUniform1i(glGetUniformLocation(frontShader.program, "texture0"), 0);
+        glUniform1i(glGetUniformLocation(unstuckShader.program, "texture0"), 0);
         
         glBindVertexArray(quadVAO);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
         
+        // Suck shader effect
+        
+        suckShader.use();
+        
+        glUniform1f(glGetUniformLocation(suckShader.program, "anim"), anim);
+        
+        glBindTexture(GL_TEXTURE_2D, texUnstuck);
+        glBindVertexArray(quadVAO);
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        
         // Blend two textures
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, fbMain);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0, 0, 0, 0);
+        
+        normalShader.use();
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texAdhered);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texture0"), 0);
+        
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texUnstuck);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texture1"), 1);
+        
+        glBindVertexArray(quadVAO);
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        
+        // Draw background
+        
+        normalShader.use();
+        
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texBackground);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texture0"), 0);
+        
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texMain);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texture1"), 1);
+        
+        glBindVertexArray(quadVAO);
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        
+        // Print to screen
         
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -312,14 +377,7 @@ int Demo :: run() {
         
         normalShader.use();
         
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texBack);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texture0"), 0);
-        
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texFront);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texture1"), 1);
-        
+        glBindTexture(GL_TEXTURE_2D, texMain);
         glBindVertexArray(quadVAO);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -331,8 +389,9 @@ int Demo :: run() {
     
     // Ternimate
     
-    glDeleteFramebuffers(1, &fbBack);
-    glDeleteFramebuffers(1, &fbFront);
+    glDeleteFramebuffers(1, &fbAdhered);
+    glDeleteFramebuffers(1, &fbUnstuck);
+    glDeleteFramebuffers(1, &fbMain);
     glDeleteVertexArrays(1, &vertexArrayObject);
     glDeleteBuffers(1, &elementBufferObject);
     glDeleteBuffers(1, &vertexBufferObject);

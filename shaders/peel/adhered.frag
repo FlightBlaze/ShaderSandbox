@@ -21,7 +21,9 @@ void main() {
     if(anim == 1)
         discard;
         
-    // leave some space in bend
+    /* Leave some space in fold to not cover semi-transparent
+       pixels in adhered texture */
+       
     if(((UV.x * width + 1) / width + (UV.y * height + 1) / height ) / 2 > 1 - anim)
         color.a = 0;
 }
