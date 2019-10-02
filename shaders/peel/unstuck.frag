@@ -33,15 +33,20 @@ void main() {
     
     /* Cut overlapping */
     
-    if(mirror.x >= 0 || mirror.y >= 0)
+    if(mirror.x >= 0 || mirror.y >= 0 || mirror.y < -1 || mirror.x < -1)
         return;
+        
+    if((UV.x + UV.y) / 2 > 1 - anim)
+        return;
+    
+    /* Interpolate */
     
     color = texture(texture0, mirror);
     
     /* Add light */
     
     color.rgb += 0.09 * color.a;
-    color.rgb += ((1 - anim - (UV.x + UV.y) / 2) / 2) * color.a;
+    color.rgb += (1 - anim - (UV.x + UV.y) / 2) / 2 * color.a;
     
     if((UV.x + UV.y) / 2 < 1 - anim && (UV.x + UV.y) / 2 > 1 - anim - 0.02)
         color.rgb += ((1 - abs((UV.x + UV.y) / 2 - (1 - anim)) / 0.02) / 5.5) * color.a;

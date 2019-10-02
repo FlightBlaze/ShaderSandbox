@@ -109,6 +109,17 @@ unsigned Demo :: createTexture(int width, int height) {
     return tex;
 }
 
+void Demo :: recreateSquareFramebuffer(unsigned &framebuffer, unsigned &texture, int width, int height) {
+    int nwidth = width, nheight = height;
+    
+    if(width > height)
+        nheight *= width / height;
+    else
+        nwidth *= height / width;
+    
+    recreateFramebuffer(framebuffer, texture, nwidth, nheight);
+}
+
 void Demo :: recreateFramebuffer(unsigned &framebuffer, unsigned &texture, int width, int height) {
     if(framebuffer != 0)
         glDeleteFramebuffers(1, &framebuffer);
@@ -178,9 +189,14 @@ int Demo :: run() {
         "../ShaderSandbox/shaders/peel/unstuck.frag"
     );
     
-    Shader suckShader(
-        "../ShaderSandbox/shaders/suck.vert",
-        "../ShaderSandbox/shaders/suck.frag"
+    Shader genieShader(
+        "../ShaderSandbox/shaders/genie.vert",
+        "../ShaderSandbox/shaders/genie.frag"
+    );
+    
+    Shader foldShader(
+        "../ShaderSandbox/shaders/peel/fold.vert",
+        "../ShaderSandbox/shaders/peel/fold.frag"
     );
     
     // Create buffers and array
@@ -219,9 +235,6 @@ int Demo :: run() {
     
     // Make textures
     
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
     GLuint texture0 = loadImage("../ShaderSandbox/resources/photo1.png");
     GLuint texBackground = loadImage("../ShaderSandbox/resources/background.png");
     
@@ -232,7 +245,13 @@ int Demo :: run() {
    
     unsigned int fbUnstuck = 0,
                 texUnstuck = 0;
+                
+    unsigned int fbUnstuckGenie = 0,
+                texUnstuckGenie = 0;
     
+    unsigned int fbCombined = 0,
+                texCombined = 0;
+                
     unsigned int fbMain = 0,
                 texMain = 0;
     
@@ -267,6 +286,8 @@ int Demo :: run() {
             
             recreateFramebuffer(fbAdhered, texAdhered, width, height);
             recreateFramebuffer(fbUnstuck, texUnstuck, width, height);
+            recreateFramebuffer(fbUnstuckGenie, texUnstuckGenie, width, height);
+            recreateFramebuffer(fbCombined, texCombined, width, height);
             recreateFramebuffer(fbMain, texMain, width, height);
         }
         
@@ -293,7 +314,7 @@ int Demo :: run() {
         
         // Animate
         
-        GLfloat anim = (sin(glfwGetTime()) / 2) + 0.5;
+        GLfloat anim = (sin(glfwGetTime()) / 5) + 0.5 - 0.3;
         glUniform1f(glGetUniformLocation(adheredShader.program, "anim"), anim);
         
         // Render
@@ -316,17 +337,23 @@ int Demo :: run() {
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture0);
-        glUniform1i(glGetUniformLocation(unstuckShader.program, "texture0"), 0);
+        glUniform1i(glGetUniformLocation(unstuckShader.program, "texUnstuck"), 0);
         
         glBindVertexArray(quadVAO);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
         
-        // Suck shader effect
+        // Genie shader effect
+       
+        glBindFramebuffer(GL_FRAMEBUFFER, fbUnstuckGenie);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0, 0, 0, 0);
         
-        suckShader.use();
+        genieShader.use();
         
-        glUniform1f(glGetUniformLocation(suckShader.program, "anim"), anim);
+        glUniform1i(glGetUniformLocation(genieShader.program, "height"), height);
+        glUniform1i(glGetUniformLocation(genieShader.program, "width"), width);
+        glUniform1f(glGetUniformLocation(genieShader.program, "anim"), anim);
         
         glBindTexture(GL_TEXTURE_2D, texUnstuck);
         glBindVertexArray(quadVAO);
@@ -335,7 +362,7 @@ int Demo :: run() {
         
         // Blend two textures
         
-        glBindFramebuffer(GL_FRAMEBUFFER, fbMain);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbCombined);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0, 0, 0, 0);
         
@@ -343,28 +370,30 @@ int Demo :: run() {
         
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texAdhered);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texture0"), 0);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texDst"), 0);
         
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texUnstuck);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texture1"), 1);
+        glBindTexture(GL_TEXTURE_2D, texUnstuckGenie);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texSrc"), 1);
         
         glBindVertexArray(quadVAO);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
         
-        // Draw background
+        // Make fold more skeuomorphistic
+       
+        glBindFramebuffer(GL_FRAMEBUFFER, fbMain);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0, 0, 0, 0);
         
-        normalShader.use();
+        foldShader.use();
+        
+        glUniform1i(glGetUniformLocation(foldShader.program, "height"), height);
+        glUniform1i(glGetUniformLocation(foldShader.program, "width"), width);
+        glUniform1f(glGetUniformLocation(foldShader.program, "anim"), anim);
         
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texBackground);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texture0"), 0);
-        
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texMain);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texture1"), 1);
-        
+        glBindTexture(GL_TEXTURE_2D, texCombined);
         glBindVertexArray(quadVAO);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -377,7 +406,14 @@ int Demo :: run() {
         
         normalShader.use();
         
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texBackground);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texDst"), 0);
+        
+        glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, texMain);
+        glUniform1i(glGetUniformLocation(normalShader.program, "texSrc"), 1);
+        
         glBindVertexArray(quadVAO);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);

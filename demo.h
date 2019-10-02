@@ -13,6 +13,7 @@ class Demo {
     unsigned loadImage(const char*);
     unsigned createTexture(int, int);
     
+    void recreateSquareFramebuffer(unsigned&, unsigned&, int, int);
     void recreateFramebuffer(unsigned&, unsigned&, int, int);
     
 public:
