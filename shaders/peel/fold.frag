@@ -19,6 +19,9 @@ void main() {
     if((UV.x + UV.y) / 2 < 1 - anim && (UV.x + UV.y) / 2 > 1 - anim - radius)
         z = (1 - abs((UV.x + UV.y) / 2 - (1 - anim)) / radius) * depth;
     
+    if(anim <= 0.01)
+        z *= anim * 100;
+    
     /* Interpolate */
     
     vec2 UV2 = UV + vec2(pow(z, 2));

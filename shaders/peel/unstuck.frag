@@ -16,7 +16,7 @@ void darkenFold(float thickness, float intensity) {
 }
 
 void main() {
-    if(anim == 1)
+    if(anim <= 0.001)
         discard;
 
     color = trasparent;

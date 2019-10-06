@@ -18,8 +18,8 @@ void main() {
     
     color = texture(texture0, UV);
     
-    if(anim == 1)
-        discard;
+    if(anim <= 0.01)
+        return;
         
     /* Leave some space in fold to not cover semi-transparent
        pixels in adhered texture */
