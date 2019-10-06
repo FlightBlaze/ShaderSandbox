@@ -21,5 +21,10 @@ void main() {
     
     /* Interpolate */
     
-    color = texture(texture0, UV + vec2(pow(z, 2)));
+    vec2 UV2 = UV + vec2(pow(z, 2));
+    
+    if(UV2.x > 1 || UV2.y > 1)
+        discard;
+    
+    color = texture(texture0, UV2);
 }
