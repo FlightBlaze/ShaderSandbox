@@ -18,9 +18,8 @@ vec4 getColor(vec2 uv) {
 }
 
 void main() {
-
-    vec2 target = vec2(0.0, 0.0);
-    vec2 pos = UV + normalize(UV - target) * (anim);
+    vec2 pos = UV * (2 * anim + 1) - 2 * anim;
     
 	color = getColor(pos);
 }
+

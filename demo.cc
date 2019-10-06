@@ -174,6 +174,11 @@ int Demo :: run() {
     
     // Load shaders
     
+    Shader scaleShader(
+        "../ShaderSandbox/shaders/scale.vert",
+        "../ShaderSandbox/shaders/scale.frag"
+    );
+    
     Shader normalShader(
         "../ShaderSandbox/shaders/blending/normal.vert",
         "../ShaderSandbox/shaders/blending/normal.frag"
@@ -240,17 +245,20 @@ int Demo :: run() {
     
     // Framebuffers and textures
     
+    unsigned int fbScaled = 0,
+                texScaled = 0;
+    
     unsigned int fbAdhered = 0,
                 texAdhered = 0;
    
     unsigned int fbUnstuck = 0,
                 texUnstuck = 0;
                 
-    unsigned int fbUnstuckGenie = 0,
-                texUnstuckGenie = 0;
-    
     unsigned int fbCombined = 0,
                 texCombined = 0;
+                
+    unsigned int fbGenie = 0,
+                texGenie = 0;
                 
     unsigned int fbMain = 0,
                 texMain = 0;
@@ -284,14 +292,32 @@ int Demo :: run() {
             rheight = height;
             rwidth = width;
             
+            recreateFramebuffer(fbScaled, texScaled, width, height);
             recreateFramebuffer(fbAdhered, texAdhered, width, height);
             recreateFramebuffer(fbUnstuck, texUnstuck, width, height);
-            recreateFramebuffer(fbUnstuckGenie, texUnstuckGenie, width, height);
             recreateFramebuffer(fbCombined, texCombined, width, height);
+            recreateFramebuffer(fbGenie, texGenie, width, height);
             recreateFramebuffer(fbMain, texMain, width, height);
         }
         
         glViewport(0, 0, width, height);
+        
+        GLfloat anim = (sin(glfwGetTime()) / 2) + 0.5; // (sin(glfwGetTime()) / 5) + 0.5 - 0.3
+        
+        // Scale texture
+        
+        glBindFramebuffer(GL_FRAMEBUFFER, fbScaled);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0, 0, 0, 0);
+        
+        scaleShader.use();
+        
+        glUniform1f(glGetUniformLocation(scaleShader.program, "anim"), anim);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture0);
+        glBindVertexArray(quadVAO);
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
         
         // Adhered shader effect
         
@@ -304,7 +330,7 @@ int Demo :: run() {
         // Bind textures
         
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture0);
+        glBindTexture(GL_TEXTURE_2D, texScaled);
         glUniform1i(glGetUniformLocation(adheredShader.program, "texture0"), 0);
         
         // Push width and height
@@ -314,7 +340,6 @@ int Demo :: run() {
         
         // Animate
         
-        GLfloat anim = (sin(glfwGetTime()) / 5) + 0.5 - 0.3;
         glUniform1f(glGetUniformLocation(adheredShader.program, "anim"), anim);
         
         // Render
@@ -336,29 +361,13 @@ int Demo :: run() {
         glUniform1f(glGetUniformLocation(unstuckShader.program, "anim"), anim);
         
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture0);
+        glBindTexture(GL_TEXTURE_2D, texScaled);
         glUniform1i(glGetUniformLocation(unstuckShader.program, "texUnstuck"), 0);
         
         glBindVertexArray(quadVAO);
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
         
-        // Genie shader effect
-       
-        glBindFramebuffer(GL_FRAMEBUFFER, fbUnstuckGenie);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
-        
-        genieShader.use();
-        
-        glUniform1i(glGetUniformLocation(genieShader.program, "height"), height);
-        glUniform1i(glGetUniformLocation(genieShader.program, "width"), width);
-        glUniform1f(glGetUniformLocation(genieShader.program, "anim"), anim);
-        
-        glBindTexture(GL_TEXTURE_2D, texUnstuck);
-        glBindVertexArray(quadVAO);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
         
         // Blend two textures
         
@@ -373,7 +382,7 @@ int Demo :: run() {
         glUniform1i(glGetUniformLocation(normalShader.program, "texDst"), 0);
         
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texUnstuckGenie);
+        glBindTexture(GL_TEXTURE_2D, texUnstuck);
         glUniform1i(glGetUniformLocation(normalShader.program, "texSrc"), 1);
         
         glBindVertexArray(quadVAO);
@@ -398,6 +407,23 @@ int Demo :: run() {
         
         glDrawArrays(GL_TRIANGLES, 0, 6);
         
+        // Genie shader effect
+       
+        glBindFramebuffer(GL_FRAMEBUFFER, fbGenie);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0, 0, 0, 0);
+        
+        genieShader.use();
+        
+        glUniform1i(glGetUniformLocation(genieShader.program, "height"), height);
+        glUniform1i(glGetUniformLocation(genieShader.program, "width"), width);
+        glUniform1f(glGetUniformLocation(genieShader.program, "anim"), anim);
+        
+        glBindTexture(GL_TEXTURE_2D, texMain);
+        glBindVertexArray(quadVAO);
+        
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        
         // Print to screen
         
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -411,7 +437,7 @@ int Demo :: run() {
         glUniform1i(glGetUniformLocation(normalShader.program, "texDst"), 0);
         
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texMain);
+        glBindTexture(GL_TEXTURE_2D, texGenie);
         glUniform1i(glGetUniformLocation(normalShader.program, "texSrc"), 1);
         
         glBindVertexArray(quadVAO);
@@ -425,9 +451,16 @@ int Demo :: run() {
     
     // Ternimate
     
+    glDeleteFramebuffers(1, &fbScaled);
+    glDeleteTextures(1, &texScaled);
     glDeleteFramebuffers(1, &fbAdhered);
+    glDeleteTextures(1, &texAdhered);
     glDeleteFramebuffers(1, &fbUnstuck);
+    glDeleteTextures(1, &texUnstuck);
+    glDeleteFramebuffers(1, &fbGenie);
+    glDeleteTextures(1, &texGenie);
     glDeleteFramebuffers(1, &fbMain);
+    glDeleteTextures(1, &texMain);
     glDeleteVertexArrays(1, &vertexArrayObject);
     glDeleteBuffers(1, &elementBufferObject);
     glDeleteBuffers(1, &vertexBufferObject);
