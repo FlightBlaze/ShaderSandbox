@@ -33,7 +33,7 @@ void main() {
     
     /* Cut overlapping */
     
-    if(mirror.x >= 0 || mirror.y >= 0 || mirror.y < -1 || mirror.x < -1)
+    if(mirror.x >= -0.001 || mirror.y >= -0.001 || mirror.y < -0.999 || mirror.x < -0.999)
         return;
         
     if((UV.x + UV.y) / 2 > 1 - anim)
