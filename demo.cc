@@ -1,17 +1,20 @@
-#include "demo.h"
-
 // Important: include GLEW before other graphic libraries
 #define GLEW_STATIC
 #include <GL/glew.h>
 
-#include <GLFW/glfw3.h>
+//#include <GLFW/glfw3.h>
 #include <iostream>
-#include <GL/gl.h>
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
 
-#include "shader.h"
+#include <EGL/egl.h>
+//#include <GL/osmesa.h>
+
+#include <GL/gl.h>
+//#include <GL/glext.h>
+
+//#include "shader.h"
 
 #include "third_party/stb_image/stb_image.h"
 
@@ -19,11 +22,19 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "demo.h"
+
 static
 void key_callback(GLFWwindow*, int, int, int, int);
+static
+void cursor_pos_callback(GLFWwindow*, double, double);
+
 void error_callback(int, const char*);
 static
 int error(const char*);
+
+static float mouseX = 0.5;
+static float mouseY = 0.5;
 
 void GLAPIENTRY
 MessageCallback(
@@ -44,14 +55,6 @@ MessageCallback(
 
 namespace sandbox {
 
-GLfloat vertices[] = {
-     // Position          // Color            // UVs
-     1.0f,  1.0f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // Top right
-     1.0f, -1.0f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // Bottom right
-    -1.0f, -1.0f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // Bottom left
-    -1.0f,  1.0f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // Top left
-};
-
 GLfloat quadVertices[] = {
     // Position    // UV
    -1.0f,   1.0f,  0.0f, 1.0f,
@@ -61,11 +64,6 @@ GLfloat quadVertices[] = {
    -1.0f,   1.0f,  0.0f, 1.0f,
     1.0f,  -1.0f,  1.0f, 0.0f,
     1.0f,   1.0f,  1.0f, 1.0f
-};
-
-const GLuint indices[] = {
-    0, 1, 3,
-    1, 2, 3
 };
 
 unsigned Demo :: loadImage(const char* path) {
@@ -105,7 +103,7 @@ unsigned Demo :: createTexture(int width, int height) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
-    
+
     return tex;
 }
 
@@ -144,29 +142,43 @@ Demo :: ~Demo() {
 }
 
 int Demo :: run() {
-    // Init
+	// Check if we are in terminal
+    bool cli = true;//!glfwInit();
+
+	if(cli) {
+/*		OSMesaContext omcon  = OSMesaCreateContext(OSMESA_RGBA, NULL);
+		OSMesaMakeCurrent(
+				omcon,
+				this->cliImageBuffer,
+				GL_UNSIGNED_BYTE,
+				this->initialWidth,
+				this->initialHeight);*/
+	} else { /*
+		glfwSetErrorCallback(error_callback);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
-    if (!glfwInit())
-        return error("Failed to initialize GLFW3");
-    
-    glfwSetErrorCallback(error_callback);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
-    m_window = glfwCreateWindow(700, 500, "Demo", 0, 0);
-    
-    glfwSetKeyCallback(m_window, key_callback);
-    glfwMakeContextCurrent(m_window);
-    glfwSwapInterval(1);
-    
+		m_window = glfwCreateWindow(
+				this->initialWidth,
+				this->initialHeight,
+				"Demo", 0, 0
+		);
+	
+		glfwSetCursorPosCallback(m_window, cursor_pos_callback);
+		glfwSetKeyCallback(m_window, key_callback);
+		glfwMakeContextCurrent(m_window);
+		glfwSwapInterval(1);
+	*/}
+
     // Init GLEW
-    
+   
     glewExperimental = GL_TRUE;
     
     if (glewInit() != GLEW_OK)
         return error("Failed to initialize GLEW");
-    
+   
+
     // Enable debug 
     
     glEnable(GL_DEBUG_OUTPUT);
@@ -174,107 +186,31 @@ int Demo :: run() {
     
     // Load shaders
     
-    Shader scaleShader(
-        "../ShaderSandbox/shaders/scale.vert",
-        "../ShaderSandbox/shaders/scale.frag"
+    Shader shader(
+		"./shaders/sdf.vert",	
+        "./shaders/sdf.frag"
     );
     
-    Shader normalShader(
-        "../ShaderSandbox/shaders/blending/normal.vert",
-        "../ShaderSandbox/shaders/blending/normal.frag"
-    );
-    
-    Shader adheredShader(
-        "../ShaderSandbox/shaders/peel/adhered.vert",
-        "../ShaderSandbox/shaders/peel/adhered.frag"
-    );
-    
-    Shader unstuckShader(
-        "../ShaderSandbox/shaders/peel/unstuck.vert",
-        "../ShaderSandbox/shaders/peel/unstuck.frag"
-    );
-    
-    Shader genieShader(
-        "../ShaderSandbox/shaders/genie.vert",
-        "../ShaderSandbox/shaders/genie.frag"
-    );
-    
-    Shader foldShader(
-        "../ShaderSandbox/shaders/peel/fold.vert",
-        "../ShaderSandbox/shaders/peel/fold.frag"
-    );
-    
-    // Create buffers and array
-    
-    GLuint vertexBufferObject, vertexArrayObject, elementBufferObject;
-    
-    glGenVertexArrays(1, &vertexArrayObject);
-    glGenBuffers(1, &vertexBufferObject);
-    glGenBuffers(1, &elementBufferObject);
-    
-    // Copy vertices
-    glBindVertexArray(vertexArrayObject);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject); 
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW); 
-    
-    // Copy indices
-    
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBufferObject);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    
-    // Set pointers to vertex attributes
-    
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)0); // Position
-    glEnableVertexAttribArray(0);
-    
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(3* sizeof(GLfloat))); // Color
-    glEnableVertexAttribArray(1);
-    
-    glVertexAttribPointer(2, 2, GL_FLOAT,GL_FALSE, 8 * sizeof(GLfloat), (GLvoid*)(6 * sizeof(GLfloat))); // UVs
-    glEnableVertexAttribArray(2);
-    
-    // Unbind buffers and array
-    
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-    
-    // Make textures
-    
-    GLuint texture0 = loadImage("../ShaderSandbox/resources/photo1.png");
-    GLuint texBackground = loadImage("../ShaderSandbox/resources/background.png");
-    
-    // Framebuffers and textures
-    
-    unsigned int fbScaled = 0,
-                texScaled = 0;
-    
-    unsigned int fbAdhered = 0,
-                texAdhered = 0;
-   
-    unsigned int fbUnstuck = 0,
-                texUnstuck = 0;
-                
-    unsigned int fbCombined = 0,
-                texCombined = 0;
-                
-    unsigned int fbGenie = 0,
-                texGenie = 0;
-                
-    unsigned int fbMain = 0,
-                texMain = 0;
-    
-    // screen VAO
-    
+    // Screen array and buffer
+
     unsigned int quadVAO, quadVBO;
     glGenVertexArrays(1, &quadVAO);
     glGenBuffers(1, &quadVBO);
+
     glBindVertexArray(quadVAO);
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));   
+    
+    // Load textures
+
+    GLuint texture0 = loadImage("../shader/resources/background.png");
+    GLuint texture1 = loadImage("../shader/resources/photo1.png");
     
     // Main cycle
     
@@ -283,210 +219,94 @@ int Demo :: run() {
     do {
         int width, height;
         
-        glfwGetFramebufferSize(m_window, &width, &height);
-        
+		//glfwGetFramebufferSize(m_window, &width, &height);
+        width = this->initialWidth; height = this->initialHeight;
         // Resize textures
         
         if(height != rheight || width != rwidth) {
-         
             rheight = height;
             rwidth = width;
-            
-            recreateFramebuffer(fbScaled, texScaled, width, height);
-            recreateFramebuffer(fbAdhered, texAdhered, width, height);
-            recreateFramebuffer(fbUnstuck, texUnstuck, width, height);
-            recreateFramebuffer(fbCombined, texCombined, width, height);
-            recreateFramebuffer(fbGenie, texGenie, width, height);
-            recreateFramebuffer(fbMain, texMain, width, height);
         }
         
-        glViewport(0, 0, width, height);
+        glViewport(0, 0, width, height); 
         
-        GLfloat anim = (sin(glfwGetTime()) / 2) + 0.5; // (sin(glfwGetTime()) / 5) + 0.5 - 0.3
-        
-        // Scale texture
-        
-        glBindFramebuffer(GL_FRAMEBUFFER, fbScaled);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
-        
-        scaleShader.use();
-        
-        glUniform1f(glGetUniformLocation(scaleShader.program, "anim"), anim);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture0);
-        glBindVertexArray(quadVAO);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        
-        // Adhered shader effect
-        
-        glBindFramebuffer(GL_FRAMEBUFFER, fbAdhered);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
-        
-        adheredShader.use();
-        
-        // Bind textures
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texScaled);
-        glUniform1i(glGetUniformLocation(adheredShader.program, "texture0"), 0);
-        
-        // Push width and height
-        
-        glUniform1i(glGetUniformLocation(adheredShader.program, "height"), height);
-        glUniform1i(glGetUniformLocation(adheredShader.program, "width"), width);
-        
-        // Animate
-        
-        glUniform1f(glGetUniformLocation(adheredShader.program, "anim"), anim);
-        
-        // Render
-        
-        glBindVertexArray(vertexArrayObject);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
-        
-        // Unstuck shader effect
-        
-        glBindFramebuffer(GL_FRAMEBUFFER, fbUnstuck);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
-        
-        unstuckShader.use();
-        
-        glUniform1i(glGetUniformLocation(unstuckShader.program, "height"), height);
-        glUniform1i(glGetUniformLocation(unstuckShader.program, "width"), width);
-        glUniform1f(glGetUniformLocation(unstuckShader.program, "anim"), anim);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texScaled);
-        glUniform1i(glGetUniformLocation(unstuckShader.program, "texUnstuck"), 0);
-        
-        glBindVertexArray(quadVAO);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        
-        
-        // Blend two textures
-        
-        glBindFramebuffer(GL_FRAMEBUFFER, fbCombined);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
-        
-        normalShader.use();
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texAdhered);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texDst"), 0);
-        
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texUnstuck);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texSrc"), 1);
-        
-        glBindVertexArray(quadVAO);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        
-        // Make fold more skeuomorphistic
+		GLfloat time = 0;//glfwGetTime(); 
        
-        glBindFramebuffer(GL_FRAMEBUFFER, fbMain);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
-        
-        foldShader.use();
-        
-        glUniform1i(glGetUniformLocation(foldShader.program, "height"), height);
-        glUniform1i(glGetUniformLocation(foldShader.program, "width"), width);
-        glUniform1f(glGetUniformLocation(foldShader.program, "anim"), anim);
-        
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texCombined);
-        glBindVertexArray(quadVAO);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        
-        // Genie shader effect
-       
-        glBindFramebuffer(GL_FRAMEBUFFER, fbGenie);
-        glClear(GL_COLOR_BUFFER_BIT);
-        glClearColor(0, 0, 0, 0);
-        
-        genieShader.use();
-        
-        glUniform1i(glGetUniformLocation(genieShader.program, "height"), height);
-        glUniform1i(glGetUniformLocation(genieShader.program, "width"), width);
-        glUniform1f(glGetUniformLocation(genieShader.program, "anim"), anim);
-        
-        glBindTexture(GL_TEXTURE_2D, texMain);
-        glBindVertexArray(quadVAO);
-        
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        
-        // Print to screen
-        
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0, 0, 0, 0);
         
-        normalShader.use();
-        
+        shader.use();
+
+		glUniform1f(glGetUniformLocation(shader.program, "uTime"), time);
+
+		glUniform2f(glGetUniformLocation(shader.program, "uSize"),
+			width, height
+		);
+
+		glUniform2f(glGetUniformLocation(shader.program,
+			"uMouse"), mouseX, mouseY
+		);
+		
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texBackground);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texDst"), 0);
+        glBindTexture(GL_TEXTURE_2D, texture0);
+        glUniform1i(glGetUniformLocation(shader.program, "uTexture0"), 0);
         
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, texGenie);
-        glUniform1i(glGetUniformLocation(normalShader.program, "texSrc"), 1);
+        glBindTexture(GL_TEXTURE_2D, texture1);
+        glUniform1i(glGetUniformLocation(shader.program, "uTexture1"), 1);
         
         glBindVertexArray(quadVAO);
         
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+        /*
         glfwSwapBuffers(m_window);
         glfwPollEvents();
+        */
     }
-    while (!glfwWindowShouldClose(m_window));
+    while (true);//(!glfwWindowShouldClose(m_window));
     
     // Ternimate
     
-    glDeleteFramebuffers(1, &fbScaled);
-    glDeleteTextures(1, &texScaled);
-    glDeleteFramebuffers(1, &fbAdhered);
-    glDeleteTextures(1, &texAdhered);
-    glDeleteFramebuffers(1, &fbUnstuck);
-    glDeleteTextures(1, &texUnstuck);
-    glDeleteFramebuffers(1, &fbGenie);
-    glDeleteTextures(1, &texGenie);
-    glDeleteFramebuffers(1, &fbMain);
-    glDeleteTextures(1, &texMain);
-    glDeleteVertexArrays(1, &vertexArrayObject);
-    glDeleteBuffers(1, &elementBufferObject);
-    glDeleteBuffers(1, &vertexBufferObject);
-    
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &quadVBO);
+    /*
     glfwDestroyWindow(m_window);
     glfwTerminate();
-    
+    */
     return 0;
 }
 
     
 } // end namespace sandbox
-
+/*
 void error_callback(int error, const char* description)
  {
     fprintf(stderr, "Error: %s\n", description);
 }
 
-static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
+static void cursor_pos_callback(GLFWwindow* w,
+		double x, double y) {
+	int width, height; 
+	glfwGetFramebufferSize(w, &width, &height);
+	
+	int wx, wy;
+	glfwGetWindowPos(w, &wx, &wy);	
+
+	const GLFWvidmode *vidmode = glfwGetVideoMode(
+			glfwGetPrimaryMonitor()
+	);
+
+	mouseX = (x - wx) / width;
+	mouseY = (y - wy) / height;
+}
+*/
 static int error(const char *s) {
     printf("%s\n", s);
     return -1;
 }
-

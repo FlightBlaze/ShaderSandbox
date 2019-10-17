@@ -13,6 +13,8 @@ find_package(GLEW REQUIRED)
 pkg_check_modules(glfw3 REQUIRED glfw3)
 pkg_check_modules(GLM REQUIRED glm)
 
+include(./third_party/cmake/FindOSMesa.cmake)
+
 file(GLOB SRC "*.cc")
 file(GLOB H "*.h")
 

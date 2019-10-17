@@ -17,7 +17,12 @@ class Demo {
     void recreateFramebuffer(unsigned&, unsigned&, int, int);
     
 public:
+
+	static const int initialWidth = 700;
+	static const int initialHeight = 500;
     
+	unsigned cliImageBuffer[initialWidth * initialHeight];
+
     Demo(int, char**);
     ~Demo();
     
