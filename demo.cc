@@ -9,12 +9,13 @@
 #include <cmath>
 
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 //#include <GL/osmesa.h>
 
 #include <GL/gl.h>
 //#include <GL/glext.h>
 
-//#include "shader.h"
+#include "shader.h"
 
 #include "third_party/stb_image/stb_image.h"
 
@@ -23,6 +24,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "demo.h"
+
+#include <wayland-client.h>
 
 static
 void key_callback(GLFWwindow*, int, int, int, int);
@@ -51,6 +54,15 @@ MessageCallback(
         (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
         type, severity, message
     );
+}
+
+void assert_egl_error(const std::string& msg) {
+	EGLint error = eglGetError();
+	if (error == EGL_SUCCESS)
+    	return;
+	
+	std::cout << "EGL error 0x" << std::hex << error << " at " << msg;
+	exit(-1);
 }
 
 namespace sandbox {
@@ -142,35 +154,49 @@ Demo :: ~Demo() {
 }
 
 int Demo :: run() {
-	// Check if we are in terminal
-    bool cli = true;//!glfwInit();
+	// Init Wayland
 
-	if(cli) {
-/*		OSMesaContext omcon  = OSMesaCreateContext(OSMESA_RGBA, NULL);
-		OSMesaMakeCurrent(
-				omcon,
-				this->cliImageBuffer,
-				GL_UNSIGNED_BYTE,
-				this->initialWidth,
-				this->initialHeight);*/
-	} else { /*
-		glfwSetErrorCallback(error_callback);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    
-		m_window = glfwCreateWindow(
-				this->initialWidth,
-				this->initialHeight,
-				"Demo", 0, 0
-		);
+	wDisplay = wl_display_create();
+	if(!wDisplay) {
+		fprintf(stderr, "Unable to create W1ayland display.\n");
+		return 1;
+	}
+
+	const char *wSocket = wl_display_add_socket_auto(wDisplay);
+	if(!wSocket) {
+		fprintf(stderr, "Unable to add socket to Wayland display.\n");
+		return 1;
+	}
+
+	fprintf(stderr, "Running Wayland display on socket %s\n", wSocket);
+	wl_display_run(wDisplay);
+
+	// Init EGL
 	
-		glfwSetCursorPosCallback(m_window, cursor_pos_callback);
-		glfwSetKeyCallback(m_window, key_callback);
-		glfwMakeContextCurrent(m_window);
-		glfwSwapInterval(1);
-	*/}
-
+	EGLDisplay display;
+	EGLConfig config;
+	EGLContext context;
+	EGLSurface surface;
+	EGLint num_config;
+	
+	display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+	assert_egl_error("eglGetDisplay");
+	
+	eglInitialize(display, 0, 0);
+	assert_egl_error("eglInitialize");
+	
+	eglChooseConfig(display, nullptr, &config, 1, &num_config);
+	assert_egl_error("eglChooseConfig");
+	
+	eglBindAPI(EGL_OPENGL_API);
+	assert_egl_error("eglBindAPI");
+	
+	context = eglCreateContext(display, config, EGL_NO_CONTEXT, NULL);
+	assert_egl_error("eglCreateContext");
+	
+	eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, context);
+	assert_egl_error("eglMakeCurrent");
+	
     // Init GLEW
    
     glewExperimental = GL_TRUE;
@@ -211,7 +237,11 @@ int Demo :: run() {
 
     GLuint texture0 = loadImage("../shader/resources/background.png");
     GLuint texture1 = loadImage("../shader/resources/photo1.png");
-    
+
+	// Some framebuffers
+	
+	GLuint fbMain = 0, texMain = 0;
+
     // Main cycle
     
     int rwidth = 0, rheight = 0;
@@ -226,13 +256,15 @@ int Demo :: run() {
         if(height != rheight || width != rwidth) {
             rheight = height;
             rwidth = width;
+			
+			this->recreateFramebuffer(fbMain, texMain, width, height);
         }
         
         glViewport(0, 0, width, height); 
         
 		GLfloat time = 0;//glfwGetTime(); 
        
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, fbMain);
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0, 0, 0, 0);
         
@@ -247,7 +279,7 @@ int Demo :: run() {
 		glUniform2f(glGetUniformLocation(shader.program,
 			"uMouse"), mouseX, mouseY
 		);
-		
+
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture0);
         glUniform1i(glGetUniformLocation(shader.program, "uTexture0"), 0);
@@ -274,6 +306,16 @@ int Demo :: run() {
     glfwDestroyWindow(m_window);
     glfwTerminate();
     */
+    
+	// Terminate EGL 
+	
+	eglDestroyContext(display, context);
+	assert_egl_error("eglDestroyContext");
+	
+	eglTerminate(display);
+	assert_egl_error("eglTerminate");
+
+	wl_display_destroy(wDisplay);
     return 0;
 }
 

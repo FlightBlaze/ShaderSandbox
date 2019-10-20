@@ -1,9 +1,11 @@
 #pragma once
 
+#include <wayland-server.h>
+
 class GLFWwindow;
 
 namespace sandbox {
-    
+
 class Demo {
     
     int m_argc;
@@ -25,6 +27,10 @@ public:
 
     Demo(int, char**);
     ~Demo();
+
+	// wayland things
+	
+	struct wl_display* wDisplay;
     
     int run();
     

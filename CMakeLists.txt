@@ -12,8 +12,9 @@ find_package(GLEW REQUIRED)
 
 pkg_check_modules(glfw3 REQUIRED glfw3)
 pkg_check_modules(GLM REQUIRED glm)
-
-include(./third_party/cmake/FindOSMesa.cmake)
+pkg_check_modules(EGL REQUIRED egl)
+pkg_check_modules(wayland-client REQUIRED wayland-client)
+pkg_check_modules(wayland-server REQUIRED wayland-server)
 
 file(GLOB SRC "*.cc")
 file(GLOB H "*.h")
@@ -29,7 +30,10 @@ target_link_libraries(shadersandbox
     Threads::Threads
     OpenGL::OpenGL
     GLEW::GLEW
+    EGL
     glfw
+	wayland-server
+	wayland-client
     ${GLM_LIBRARIES}
 )
 
